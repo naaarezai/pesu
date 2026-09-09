@@ -24,6 +24,9 @@ CREATE INDEX IF NOT EXISTS idx_varaukset_asunto ON public.varaukset(asunto_numer
 --    b) Vain 1 voimassaoleva tai tuleva varaus kerrallaan per asunto
 CREATE OR REPLACE FUNCTION public.tarkista_varaus_saannot()
 RETURNS TRIGGER AS $$
+DECLARE
+    viikon_tunnit numeric;
+    uuden_varauksen_kesto numeric;
 BEGIN
     -- Poistetaan ylimääräiset välilyönnit ja varmistetaan siisti asuntotunnus
     NEW.asunto_numero := UPPER(TRIM(NEW.asunto_numero));
@@ -42,14 +45,18 @@ BEGIN
         RAISE EXCEPTION 'Valittu aikaväli on jo varattu!';
     END IF;
 
-    -- b) Tarkistetaan, ettei kyseisellä asunnolla ole jo toista tulevaa tai käynnissä olevaa varausta
-    IF EXISTS (
-        SELECT 1 FROM public.varaukset
-        WHERE id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid)
-          AND UPPER(TRIM(asunto_numero)) = NEW.asunto_numero
-          AND lopetusaika > NOW()
-    ) THEN
-        RAISE EXCEPTION 'Asunnolla % on jo voimassaoleva tai tuleva pesuvuoro! Voit varata vain yhden vuoron kerrallaan.', NEW.asunto_numero;
+    -- b) Tarkistetaan, ettei kyseisellä asunnolla ylity 3 tunnin maksimiraja samalla viikolla
+    uuden_varauksen_kesto := EXTRACT(EPOCH FROM (NEW.lopetusaika - NEW.aloitusaika)) / 3600.0;
+    
+    SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (lopetusaika - aloitusaika)) / 3600.0), 0)
+    INTO viikon_tunnit
+    FROM public.varaukset
+    WHERE id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid)
+      AND UPPER(TRIM(asunto_numero)) = NEW.asunto_numero
+      AND date_trunc('week', aloitusaika) = date_trunc('week', NEW.aloitusaika);
+
+    IF viikon_tunnit + uuden_varauksen_kesto > 3 THEN
+        RAISE EXCEPTION 'Asunnolla % on jo ennestään varauksia tälle viikolle. Yläraja (3 h/vko) ylittyisi!', NEW.asunto_numero;
     END IF;
 
     RETURN NEW;
@@ -69,24 +76,42 @@ EXECUTE FUNCTION public.tarkista_varaus_saannot();
 ALTER TABLE public.varaukset ENABLE ROW LEVEL SECURITY;
 
 -- Kaikki voivat lukea varaukset (jotta kalenteri näkyy kaikille)
+DROP POLICY IF EXISTS "Salli varausten lukeminen kaikille" ON public.varaukset;
 CREATE POLICY "Salli varausten lukeminen kaikille" 
 ON public.varaukset FOR SELECT 
 USING (true);
 
 -- Kaikki voivat lisätä varauksen (triggeri tarkistaa säännöt)
+DROP POLICY IF EXISTS "Salli varausten luominen" ON public.varaukset;
 CREATE POLICY "Salli varausten luominen" 
 ON public.varaukset FOR INSERT 
 WITH CHECK (true);
 
 -- Sallitaan oman varauksen peruuttaminen (poistaminen)
+DROP POLICY IF EXISTS "Salli varauksen poisto" ON public.varaukset;
 CREATE POLICY "Salli varauksen poisto" 
 ON public.varaukset FOR DELETE 
 USING (true);
 
 -- Sallitaan varauksen kuittaaminen (päivitys)
+DROP POLICY IF EXISTS "Salli varauksen päivitys" ON public.varaukset;
 CREATE POLICY "Salli varauksen päivitys" 
 ON public.varaukset FOR UPDATE 
 USING (true);
 
 -- 4. Ota käyttöön Supabase Realtime (jotta kalenteri päivittyy heti ilman sivun päivitystä)
-ALTER PUBLICATION supabase_realtime ADD TABLE public.varaukset;
+DO $$ 
+BEGIN
+  -- Varmista että julkaisu on olemassa
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+  
+  -- Lisää taulu julkaisuun vain jos se ei vielä ole siellä
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'varaukset'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.varaukset;
+  END IF;
+END $$;
