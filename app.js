@@ -141,8 +141,8 @@
       devCredit: "Tekninen toteutus ja tuki:",
       loadingWait: "Hetkinen...",
       loadingCanceling: "Peruutetaan...",
-      alertMaxBookingsWeek: "Olet jo varannut sallitut 3 vuoroa tälle viikolle. Peruuta jokin aiemmista varauksista, jos haluat muuttaa aikoja.",
-      activeBookingsTitle: "Sinulla on varauksia ({count} / 3):",
+      alertMaxBookingsWeek: "Olet jo varannut sallitut 3 tuntia tälle viikolle.",
+      activeBookingsTitle: "Sinulla on varauksia ({count}):",
       rulesHtml: `
         <div class="rule-section">
           <h4>Pesutuvan säännöt</h4>
@@ -243,8 +243,8 @@
       devCredit: "Technical implementation and support:",
       loadingWait: "Please wait...",
       loadingCanceling: "Canceling...",
-      alertMaxBookingsWeek: "You have already booked the maximum 3 slots for this week. Cancel an existing reservation to make changes.",
-      activeBookingsTitle: "You have active reservations ({count} / 3):",
+      alertMaxBookingsWeek: "You have already booked the maximum 3 hours for this week.",
+      activeBookingsTitle: "You have active reservations ({count}):",
       rulesHtml: `
         <div class="rule-section">
           <h4>Laundry room rules</h4>
@@ -558,6 +558,15 @@
     }
   };
 
+  function getMyTotalHoursThisWeek() {
+    if (!state.myActiveBookings) return 0;
+    return state.myActiveBookings.reduce((sum, b) => {
+      const s = new Date(b.aloitusaika);
+      const e = new Date(b.lopetusaika);
+      return sum + ((e - s) / (1000 * 60 * 60));
+    }, 0);
+  }
+
   // ============================================================================
   // VARAUSTEN HAKU & REALTIME
   // ============================================================================
@@ -648,8 +657,11 @@
       return;
     }
 
-    // Tarkistetaan onko jo 3 tulevaa varausta tälle viikolle
-    if (state.myActiveBookings && state.myActiveBookings.length >= 3) {
+    // Laske montako tuntia on jo varattu
+    const totalHours = getMyTotalHoursThisWeek();
+    const remainingHours = 3 - totalHours;
+
+    if (remainingHours <= 0) {
       alert(getT('alertMaxBookingsWeek'));
       return;
     }
@@ -661,7 +673,19 @@
     elements.bookingDate.value = `${yyyy}-${mm}-${dd}`;
 
     elements.bookingStart.value = (hour !== undefined) ? hour : 7;
-    elements.bookingDuration.value = 3; // Oletuksena 3h
+    
+    // Päivitetään kesto-valikon vaihtoehdot (max jäljellä olevat tunnit)
+    const durationSelect = elements.bookingDuration;
+    durationSelect.innerHTML = '';
+    const maxDuration = Math.min(3, remainingHours);
+    for (let i = 1; i <= maxDuration; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = i;
+      if (i === maxDuration) opt.selected = true;
+      durationSelect.appendChild(opt);
+    }
+
     elements.modalApt.value = state.currentApt;
     elements.bookingErrorBox.classList.add('hidden');
 
@@ -741,10 +765,15 @@
 
     if (state.isOfflineMock) {
       // Mock-tallennus
-      // Tarkistetaan onko jo 3 varausta
       const userBookings = mockBookings.filter(b => b.asunto_numero.toUpperCase() === apt && new Date(b.lopetusaika) > now);
-      if (userBookings.length >= 3) {
-        showBookingError(getT('errorMaxBookings', { apt: apt }));
+      const totalHoursMock = userBookings.reduce((sum, b) => {
+        const s = new Date(b.aloitusaika);
+        const e = new Date(b.lopetusaika);
+        return sum + ((e - s) / (1000 * 60 * 60));
+      }, 0);
+      
+      if (totalHoursMock + duration > 3) {
+        showBookingError(getT('alertMaxBookingsWeek'));
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.textContent = originalBtnText;
