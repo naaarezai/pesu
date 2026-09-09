@@ -703,3 +703,21 @@ button {
     width: 100%;
   }
 }
+
+/* Globaali alatunniste */
+.app-footer {
+  text-align: center;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.app-footer a {
+  color: var(--primary-color);
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 0.25rem;
+}
+.app-footer a:hover {
+  text-decoration: underline;
+}

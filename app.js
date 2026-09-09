@@ -3,17 +3,17 @@
 // Frontend-sovelluslogiikka & Supabase-integraatio
 // ==============================================================================
 
-(function() {
+(function () {
   'use strict';
 
   // Alustetaan Supabase-asiakas
   let supabase = null;
   const cfg = window.APP_CONFIG || {};
 
-  const isSupabaseConfigured = cfg.SUPABASE_URL && 
-    cfg.SUPABASE_URL !== 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co' &&
-    cfg.SUPABASE_ANON_KEY && 
-    cfg.SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+  const isSupabaseConfigured = cfg.SUPABASE_URL &&
+    cfg.SUPABASE_URL !== '' &&
+    cfg.SUPABASE_ANON_KEY &&
+    cfg.SUPABASE_ANON_KEY !== '';
 
   if (isSupabaseConfigured && window.supabase) {
     try {
@@ -76,6 +76,245 @@
   // Päivien nimet (Maanantai - Sunnuntai)
   const DAY_NAMES_FI = ['Maanantai', 'Tiistai', 'Keskiviikko', 'Torstai', 'Perjantai', 'Lauantai', 'Sunnuntai'];
   const DAY_NAMES_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  // ============================================================================
+  // KIELET & KÄÄNNÖKSET
+  // ============================================================================
+  const translations = {
+    fi: {
+      pageTitle: "Kouvolan Asunnot Oy – Pesutuvan varauslista | pesu.sido.fi",
+      ownAptLabel: "Oma huoneisto:",
+      notSet: "Ei asetettu",
+      setBtn: "Aseta",
+      openingHours: "Aukioloaika",
+      maxDuration: "Varauksen kesto max",
+      hours: "tuntia",
+      oneSlotOnly: "Vain 1 vuoro kerrallaan",
+      cleanAfter: "Muistathan siivota pesutuvan vuorosi jälkeen!",
+      thisWeek: "Tämä viikko",
+      rulesBtn: "Ohjeet & Säännöt",
+      reserveBtn: "Varaa pesuvuoro",
+      activeBookingTitle: "Sinulla on voimassaoleva pesuvuoro:",
+      cancelBookingBtn: "Peruuta varaus",
+      footerNote1: "Merkitsithän huoneistosi numeron oikein.",
+      footerNote2: "Noudata pesutuvan järjestyssääntöjä ja vapauta koneet ajoissa seuraavalle asukkaalle!",
+      aptModalTitle: "Määritä oma huoneistonumero",
+      aptModalDesc: "Syötä huoneistonumerosi (esim. <strong>D23/1</strong>, <strong>A4/1</strong>, <strong>B12/2</strong>). Salasanaa ei tarvita! Asuntonumero säilyy tämän laitteen muistissa.",
+      aptModalLabel: "Huoneiston numero / Apartment number:",
+      closeBtn: "Sulje",
+      saveBtn: "Tallenna",
+      bookingModalTitle: "Varaa pesuvuoro / Reserve laundry",
+      dateLabel: "Päivämäärä / Date:",
+      startTimeLabel: "Aloitusaika:",
+      durationLabel: "Kesto (tuntia):",
+      bookingSummaryLabel: "Varattava aikaväli:",
+      cancelBtn: "Peruuta",
+      confirmBtn: "Vahvista varaus",
+      rulesModalTitle: "Ohjeet & Säännöt / Rules & Guides",
+      weekTitlePrefix: "Viikko",
+      dayNames: ['Maanantai', 'Tiistai', 'Keskiviikko', 'Torstai', 'Perjantai', 'Lauantai', 'Sunnuntai'],
+      freeSlotTitle: "Vapaa - Klikkaa varataksesi",
+      pastSlotTitle: "Menneet vuorot",
+      bookedSlotTitle: "Varattu asunnolle",
+      toastDemo: "⚠️ Demotilassa: Muista päivittää omat Supabase-tunnukset config.js -tiedostoon.",
+      toastPast: "Et voi varata menneitä vuoroja.",
+      toastAlreadyBooked: "Vuoro on jo varattu asunnolle",
+      toastMySlotCancelConfirm: "Haluatko peruuttaa asunnon {apt} varauksen?",
+      alertAlreadyBookedMy: "Sinulla on jo varattu vuoro ({time}). Sääntöjen mukaan voit varata vain 1 vuoron kerrallaan! Peruuta ensin edellinen, jos haluat vaihtaa aikaa.",
+      errorAptReq: "Syötä huoneiston numero (esim. D23/1)!",
+      errorDateReq: "Valitse päivämäärä!",
+      errorEndLate: "Pesutupa sulkeutuu klo {end}:00. Vuoro ei voi päättyä tämän jälkeen!",
+      errorPast: "Et voi varata menneisyyteen sijoittuvaa aikaa.",
+      errorOverlap: "Osa valitsemastasi ajasta on jo varattu toiselle asukkaalle!",
+      errorMaxBookings: "Asunnolla {apt} on jo varaus! Vain 1 varaus kerrallaan sallittu.",
+      toastBooked: "Vuoro varattu huoneistolle {apt}!",
+      toastCancelConfirm: "Haluatko varmasti peruuttaa huoneiston {apt} pesuvuoron?",
+      toastCancelSuccess: "Varaus peruutettu. Aika on nyt vapaa muiden varattavaksi.",
+      toastCancelFail: "Peruminen epäonnistui: ",
+      toastAptSet: "Oma huoneisto asetettu: ",
+      timePrefix: "klo",
+      aptLabel: "Huoneisto",
+      toastLoadFail: "Tietojen lataus epäonnistui: ",
+      warnRealtime: "Realtime ei saatavilla:",
+      hourShort: "h",
+      errorBookingFail: "Varauksen tallennus epäonnistui",
+      devCredit: "Tekninen toteutus ja tuki:",
+      rulesHtml: `
+        <div class="rule-section">
+          <h4>Pesutuvan säännöt</h4>
+          <ul>
+            <li>Vain asukkaiden käyttöön.</li>
+            <li>Mattojen pesu kielletty.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h4>Pesuvuoron varaus</h4>
+          <ul>
+            <li>Varauslistassa on pesuvuorovarauksia samoille asunnoille niin, että vuoroja on varattu useille päiville/viikoille etukäteen. Muistutamme pesutuvan käyttäjiä, että kerrallaan voi varata vain yhden vuoron, jonka kesto on enintään kolme tuntia. <strong>Uuden vuoron voi varata vasta kun on käyttänyt aikaisemman vuoron.</strong></li>
+            <li>Pesutuvan sujuvan käytön varmistamiseksi varaukset tulee jatkossa tehdä pesutupaohjeistuksen mukaisesti.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h4>Pyykinpesukoneen puhdistus</h4>
+          <ul>
+            <li>Puhdista pesuainekotelot mahdollisista jäämistä.</li>
+            <li>Puhdista nukkasihti ja pyyhi kumitiiviste kostealla liinalla.</li>
+            <li>Jätä pesukoneen luukku ja pesuainekotelo auki käytön jälkeen, jotta kone tuulettuu ja kuivuu.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h4>Kuivauskaapin / nukkasihdin puhdistus</h4>
+          <ul>
+            <li>Luukussa oleva nukkasihti kerää tekstiileistä irtoavan nukan.</li>
+            <li><strong>Puhdista nukkasihti jokaisen kuivauskerran jälkeen</strong> – säästät kuivausaikaa ja energiaa.</li>
+            <li>Vedä luukun nukkasihti ylös kotelostaan. Pyyhi nukka sihdin pinnalta. Puhdista myös luukussa oleva tiiviste kostealla liinalla. Laita puhdistettu nukkasihti takaisin paikoilleen.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h4>Sauna (Jukolantie 17)</h4>
+          <ul>
+            <li>Sijaitsee C-D-talon kellarikerroksessa.</li>
+            <li>Lauantaisin: klo 18-19 (naiset) / klo 19-20 (miehet)</li>
+          </ul>
+        </div>
+      `
+    },
+    en: {
+      pageTitle: "Kouvolan Asunnot Oy – Laundry Reservation | pesu.sido.fi",
+      ownAptLabel: "My apartment:",
+      notSet: "Not set",
+      setBtn: "Set",
+      openingHours: "Opening hours",
+      maxDuration: "Max duration",
+      hours: "hours",
+      oneSlotOnly: "Only 1 reservation at a time",
+      cleanAfter: "Remember to clean the laundry room after use!",
+      thisWeek: "This week",
+      rulesBtn: "Rules & Guides",
+      reserveBtn: "Reserve laundry",
+      activeBookingTitle: "You have an active reservation:",
+      cancelBookingBtn: "Cancel reservation",
+      footerNote1: "Please ensure your apartment number is correct.",
+      footerNote2: "Follow the laundry room rules and free the machines on time for the next resident!",
+      aptModalTitle: "Set your apartment number",
+      aptModalDesc: "Enter your apartment number (e.g. <strong>D23/1</strong>, <strong>A4/1</strong>, <strong>B12/2</strong>). No password required! It is saved locally on this device.",
+      aptModalLabel: "Apartment number:",
+      closeBtn: "Close",
+      saveBtn: "Save",
+      bookingModalTitle: "Reserve laundry time",
+      dateLabel: "Date:",
+      startTimeLabel: "Start time:",
+      durationLabel: "Duration (hours):",
+      bookingSummaryLabel: "Selected time:",
+      cancelBtn: "Cancel",
+      confirmBtn: "Confirm reservation",
+      rulesModalTitle: "Rules & Guides",
+      weekTitlePrefix: "Week",
+      dayNames: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      freeSlotTitle: "Free - Click to reserve",
+      pastSlotTitle: "Past times",
+      bookedSlotTitle: "Reserved for apartment",
+      toastDemo: "⚠️ Demo mode: Remember to update Supabase credentials in config.js.",
+      toastPast: "You cannot reserve past times.",
+      toastAlreadyBooked: "Time slot already reserved for apartment",
+      toastMySlotCancelConfirm: "Do you want to cancel the reservation for apartment {apt}?",
+      alertAlreadyBookedMy: "You already have a reservation ({time}). You can only have 1 active reservation at a time! Cancel the previous one first to change time.",
+      errorAptReq: "Enter apartment number (e.g. D23/1)!",
+      errorDateReq: "Select a date!",
+      errorEndLate: "Laundry room closes at {end}:00. Reservation cannot end after this!",
+      errorPast: "You cannot reserve time in the past.",
+      errorOverlap: "Part of your selected time is already reserved!",
+      errorMaxBookings: "Apartment {apt} already has a reservation! Only 1 at a time.",
+      toastBooked: "Reservation confirmed for apartment {apt}!",
+      toastCancelConfirm: "Are you sure you want to cancel reservation for {apt}?",
+      toastCancelSuccess: "Reservation cancelled. The time slot is now free.",
+      toastCancelFail: "Cancellation failed: ",
+      toastAptSet: "My apartment set: ",
+      timePrefix: "at",
+      aptLabel: "Apartment",
+      toastLoadFail: "Failed to load data: ",
+      warnRealtime: "Realtime not available:",
+      hourShort: "h",
+      errorBookingFail: "Failed to save reservation",
+      devCredit: "Technical implementation and support:",
+      rulesHtml: `
+        <div class="rule-section">
+          <h4>Laundry room rules</h4>
+          <ul>
+            <li>Only for residents.</li>
+            <li>Do not wash rugs.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h4>Reserving laundry time</h4>
+          <ul>
+            <li>There are washing-time reservations in the booking list for the same apartments so that time slots have been reserved for several days/weeks in advance. We would like to remind all laundry room users that you may only reserve one slot at a time, with a maximum duration of three hours. <strong>You can make a new reservation only after you have used your previous slot.</strong></li>
+            <li>To ensure the efficient use of the laundry room, reservations must from now on be made in accordance with the laundry room instructions.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h4>Cleaning the washing machine</h4>
+          <ul>
+            <li>Clean the detergent compartments of any residue.</li>
+            <li>Clean the lint filter and wipe the rubber seal with a damp cloth.</li>
+            <li>Leave the washing machine door and detergent compartment open after use to allow the machine to ventilate and dry.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h4>Cleaning the lint filter</h4>
+          <ul>
+            <li>The lint filter in the door collects lint that comes off textiles.</li>
+            <li><strong>Clean the lint filter after each use</strong> – this saves drying time and energy.</li>
+            <li>Pull the lint filter out of its filter frame in the door. Wipe the lint off the filter. Clean the door gasket with a damp cloth. Return the cleaned lint filter.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h4>Sauna (Jukolantie 17)</h4>
+          <ul>
+            <li>Sauna is in the basement of the building C-D.</li>
+            <li>On Saturdays: 18:00–19:00 (womens) / 19:00–20:00 (mens)</li>
+          </ul>
+        </div>
+      `
+    }
+  };
+
+  function getT(key, params = {}) {
+    let str = translations[state.currentLang][key] || key;
+    for (const [k, v] of Object.entries(params)) {
+      str = str.replace(`{${k}}`, v);
+    }
+    return str;
+  }
+
+  function updateLanguage() {
+    const t = translations[state.currentLang];
+    document.documentElement.lang = state.currentLang;
+    
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (t[key]) {
+        if (el.tagName === 'INPUT' && el.type === 'text') {
+            // Keep placeholder or not? We can just keep it.
+        } else {
+            el.innerHTML = t[key];
+        }
+      }
+    });
+    
+    const rulesContent = document.getElementById('rulesContent');
+    if (rulesContent) {
+        rulesContent.innerHTML = t.rulesHtml;
+    }
+    
+    if (elements.langToggleBtn) {
+        elements.langToggleBtn.textContent = state.currentLang === 'fi' ? 'EN' : 'FI';
+    }
+    
+    renderCalendarSkeleton();
+    updateCalendarSlots();
+    updateAptBadge();
+  }
 
   // ============================================================================
   // ALUSTUS
@@ -274,7 +513,7 @@
       const start = new Date(b.aloitusaika);
       const end = new Date(b.lopetusaika);
       const dateStr = `${getT('dayNames')[(start.getDay() + 6) % 7]} ${start.getDate()}.${start.getMonth() + 1}.${start.getFullYear()}`;
-      elements.myBookingDetailsText.textContent = `${dateStr} klo ${formatTime(start)} – ${formatTime(end)} (Huoneisto: ${b.asunto_numero})`;
+      elements.myBookingDetailsText.textContent = `${dateStr} ${getT('timePrefix')} ${formatTime(start)} – ${formatTime(end)} (${getT('aptLabel')}: ${b.asunto_numero})`;
       elements.myBookingAlert.classList.remove('hidden');
     } else {
       elements.myBookingAlert.classList.add('hidden');
@@ -311,7 +550,7 @@
       updateCalendarSlots();
     } catch (err) {
       console.error('Virhe haettaessa varauksia:', err);
-      showToast('Tietojen lataus epäonnistui: ' + err.message);
+      showToast(getT('toastLoadFail') + err.message);
     }
   }
 
@@ -325,12 +564,12 @@
         })
         .subscribe();
     } catch (e) {
-      console.warn('Realtime ei saatavilla:', e);
+      console.warn(getT('warnRealtime'), e);
     }
   }
 
   // ============================================================================
-  // VARAUKSEN TEKO & PERUUTUS
+  // VARAUKSE TEKO & PERUUTUS
   // ============================================================================
   function handleSlotClick(slotDate, hour) {
     const now = new Date();
@@ -351,7 +590,7 @@
 
     if (bookedMatch) {
       if (state.currentApt && bookedMatch.asunto_numero.toUpperCase() === state.currentApt.toUpperCase()) {
-        if (confirm(getT('toastMySlotCancelConfirm', {apt: bookedMatch.asunto_numero}))) {
+        if (confirm(getT('toastMySlotCancelConfirm', { apt: bookedMatch.asunto_numero }))) {
           cancelBooking(bookedMatch.id);
         }
       } else {
@@ -373,7 +612,7 @@
 
     // Tarkistetaan onko jo tuleva varaus
     if (state.myActiveBooking) {
-      alert(getT('alertAlreadyBookedMy', {time: elements.myBookingDetailsText.textContent}));
+      alert(getT('alertAlreadyBookedMy', { time: elements.myBookingDetailsText.textContent }));
       return;
     }
 
@@ -399,7 +638,7 @@
     if (endH > (cfg.END_HOUR || 22)) {
       endH = cfg.END_HOUR || 22;
     }
-    elements.bookingSummaryRange.textContent = `${padZero(startH)}:00 – ${padZero(endH)}:00 (${endH - startH} h)`;
+    elements.bookingSummaryRange.textContent = `${padZero(startH)}:00 – ${padZero(endH)}:00 (${endH - startH} ${getT('hourShort')})`;
   }
 
   async function handleBookingSubmit(e) {
@@ -423,7 +662,7 @@
     const endH = startH + duration;
 
     if (endH > (cfg.END_HOUR || 22)) {
-      showBookingError(getT('errorEndLate', {end: cfg.END_HOUR || 22}));
+      showBookingError(getT('errorEndLate', { end: cfg.END_HOUR || 22 }));
       return;
     }
 
@@ -459,7 +698,7 @@
       // Tarkistetaan tuplavaraus
       const existing = mockBookings.find(b => b.asunto_numero.toUpperCase() === apt && new Date(b.lopetusaika) > now);
       if (existing) {
-        showBookingError(getT('errorMaxBookings', {apt: apt}));
+        showBookingError(getT('errorMaxBookings', { apt: apt }));
         return;
       }
 
@@ -473,8 +712,8 @@
       };
       mockBookings.push(newBooking);
       localStorage.setItem('pesu_mock_bookings', JSON.stringify(mockBookings));
-      
-      showToast(getT('toastBooked', {apt: apt}));
+
+      showToast(getT('toastBooked', { apt: apt }));
       elements.bookingModal.classList.add('hidden');
       fetchBookings();
       return;
@@ -495,12 +734,12 @@
 
       if (error) throw error;
 
-      showToast(getT('toastBooked', {apt: apt}));
+      showToast(getT('toastBooked', { apt: apt }));
       elements.bookingModal.classList.add('hidden');
       fetchBookings();
     } catch (err) {
       console.error('Varausvirhe:', err);
-      showBookingError(err.message || 'Varauksen tallennus epäonnistui');
+      showBookingError(err.message || getT('errorBookingFail'));
     }
   }
 
@@ -565,7 +804,7 @@
   // TAPAHTUMANKÄSITTELIJÄT
   // ============================================================================
   function bindEvents() {
-    
+
     // Kielen vaihto
     if (elements.langToggleBtn) {
       elements.langToggleBtn.addEventListener('click', () => {
@@ -574,7 +813,7 @@
         updateLanguage();
       });
     }
-    
+
     // Ohjeet-modaali
     if (elements.openRulesModalBtn) {
       elements.openRulesModalBtn.addEventListener('click', () => {
@@ -643,7 +882,7 @@
     // Peruuta oma varaus yläpalkista
     elements.cancelMyBookingBtn.addEventListener('click', () => {
       if (state.myActiveBooking) {
-        if (confirm(getT('toastCancelConfirm', {apt: state.myActiveBooking.asunto_numero}))) {
+        if (confirm(getT('toastCancelConfirm', { apt: state.myActiveBooking.asunto_numero }))) {
           cancelBooking(state.myActiveBooking.id);
         }
       }
