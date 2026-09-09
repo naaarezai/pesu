@@ -25,6 +25,7 @@
 
   // Tilan hallinta (State)
   const state = {
+    currentLang: localStorage.getItem('pesu_lang') || 'fi',
     currentApt: localStorage.getItem('pesu_apt') || '',
     currentMonday: getMonday(new Date()),
     bookings: [], // Viikon varaukset
@@ -64,7 +65,12 @@
     bookingErrorBox: document.getElementById('bookingErrorBox'),
     closeBookingModalBtn: document.getElementById('closeBookingModalBtn'),
     closeBookingModalX: document.getElementById('closeBookingModalX'),
-    toast: document.getElementById('toast')
+    toast: document.getElementById('toast'),
+    langToggleBtn: document.getElementById('langToggleBtn'),
+    openRulesModalBtn: document.getElementById('openRulesModalBtn'),
+    rulesModal: document.getElementById('rulesModal'),
+    closeRulesModalX: document.getElementById('closeRulesModalX'),
+    closeRulesModalBtn: document.getElementById('closeRulesModalBtn')
   };
 
   // Päivien nimet (Maanantai - Sunnuntai)
@@ -75,6 +81,7 @@
   // ALUSTUS
   // ============================================================================
   function init() {
+    updateLanguage();
     updateAptBadge();
     populateTimeSelects();
     renderCalendarSkeleton();
@@ -82,7 +89,7 @@
     bindEvents();
 
     if (state.isOfflineMock) {
-      showToast('⚠️ Demotilassa: Muista päivittää omat Supabase-tunnukset config.js -tiedostoon.', 6000);
+      showToast(getT('toastDemo'), 6000);
     } else {
       setupRealtime();
     }
@@ -147,7 +154,7 @@
     const sunday = addDays(monday, 6);
 
     const weekNum = getWeekNumber(monday);
-    elements.weekTitle.textContent = `Viikko ${weekNum}`;
+    elements.weekTitle.textContent = `${getT('weekTitlePrefix')} ${weekNum}`;
     elements.weekDateRange.textContent = `${formatDateFI(monday)} – ${formatFullDateFI(sunday)}`;
 
     // Luodaan otsikkorivi: "klo" + 7 saraketta (Ma - Su)
@@ -162,7 +169,7 @@
       th.className = 'day-header' + (isToday ? ' today' : '');
       th.innerHTML = `
         <span>${formatDateFI(dayDate)}</span>
-        <div>${DAY_NAMES_FI[i]}</div>
+        <div>${getT('dayNames')[i]}</div>
       `;
       elements.tableHeaderRow.appendChild(th);
     }
@@ -211,7 +218,7 @@
     cells.forEach(cell => {
       cell.className = 'slot-cell free';
       cell.innerHTML = '';
-      cell.title = 'Vapaa - Klikkaa varataksesi';
+      cell.title = getT('freeSlotTitle');
 
       const slotDate = new Date(cell.dataset.date);
       const slotEnd = new Date(slotDate);
@@ -219,7 +226,7 @@
 
       if (slotEnd <= now) {
         cell.className = 'slot-cell past';
-        cell.title = 'Menneet vuorot';
+        cell.title = getT('pastSlotTitle');
       }
     });
 
@@ -248,7 +255,7 @@
           const isMySlot = state.currentApt && (b.asunto_numero.toUpperCase() === state.currentApt.toUpperCase());
           cell.className = 'slot-cell booked' + (isMySlot ? ' my-slot' : '');
           cell.innerHTML = `<strong>${escapeHtml(b.asunto_numero)}</strong>`;
-          cell.title = `Varattu asunnolle ${b.asunto_numero} (${formatTime(start)} - ${formatTime(end)})`;
+          cell.title = `${getT('bookedSlotTitle')} ${b.asunto_numero} (${formatTime(start)} - ${formatTime(end)})`;
           cell.dataset.bookingId = b.id;
         }
       });
@@ -266,7 +273,7 @@
       const b = state.myActiveBooking;
       const start = new Date(b.aloitusaika);
       const end = new Date(b.lopetusaika);
-      const dateStr = `${DAY_NAMES_FI[(start.getDay() + 6) % 7]} ${start.getDate()}.${start.getMonth() + 1}.${start.getFullYear()}`;
+      const dateStr = `${getT('dayNames')[(start.getDay() + 6) % 7]} ${start.getDate()}.${start.getMonth() + 1}.${start.getFullYear()}`;
       elements.myBookingDetailsText.textContent = `${dateStr} klo ${formatTime(start)} – ${formatTime(end)} (Huoneisto: ${b.asunto_numero})`;
       elements.myBookingAlert.classList.remove('hidden');
     } else {
@@ -331,7 +338,7 @@
     slotEnd.setHours(hour + 1);
 
     if (slotEnd <= now) {
-      showToast('Et voi varata menneitä vuoroja.');
+      showToast(getT('toastPast'));
       return;
     }
 
@@ -344,11 +351,11 @@
 
     if (bookedMatch) {
       if (state.currentApt && bookedMatch.asunto_numero.toUpperCase() === state.currentApt.toUpperCase()) {
-        if (confirm(`Haluatko peruuttaa asunnon ${bookedMatch.asunto_numero} varauksen?`)) {
+        if (confirm(getT('toastMySlotCancelConfirm', {apt: bookedMatch.asunto_numero}))) {
           cancelBooking(bookedMatch.id);
         }
       } else {
-        showToast(`Vuoro on jo varattu asunnolle ${bookedMatch.asunto_numero}`);
+        showToast(`${getT('toastAlreadyBooked')} ${bookedMatch.asunto_numero}`);
       }
       return;
     }
@@ -366,7 +373,7 @@
 
     // Tarkistetaan onko jo tuleva varaus
     if (state.myActiveBooking) {
-      alert(`Sinulla on jo varattu vuoro (${elements.myBookingDetailsText.textContent}). Sääntöjen mukaan voit varata vain 1 vuoron kerrallaan! Peruuta ensin edellinen, jos haluat vaihtaa aikaa.`);
+      alert(getT('alertAlreadyBookedMy', {time: elements.myBookingDetailsText.textContent}));
       return;
     }
 
@@ -401,13 +408,13 @@
 
     const apt = elements.modalApt.value.trim().toUpperCase();
     if (!apt) {
-      showBookingError('Syötä huoneiston numero (esim. D23/1)!');
+      showBookingError(getT('errorAptReq'));
       return;
     }
 
     const dateStr = elements.bookingDate.value; // YYYY-MM-DD
     if (!dateStr) {
-      showBookingError('Valitse päivämäärä!');
+      showBookingError(getT('errorDateReq'));
       return;
     }
 
@@ -416,7 +423,7 @@
     const endH = startH + duration;
 
     if (endH > (cfg.END_HOUR || 22)) {
-      showBookingError(`Pesutupa sulkeutuu klo ${cfg.END_HOUR || 22}:00. Vuoro ei voi päättyä tämän jälkeen!`);
+      showBookingError(getT('errorEndLate', {end: cfg.END_HOUR || 22}));
       return;
     }
 
@@ -427,7 +434,7 @@
 
     const now = new Date();
     if (endDate <= now) {
-      showBookingError('Et voi varata menneisyyteen sijoittuvaa aikaa.');
+      showBookingError(getT('errorPast'));
       return;
     }
 
@@ -442,7 +449,7 @@
     });
 
     if (overlap) {
-      showBookingError('Osa valitsemastasi ajasta on jo varattu toiselle asukkaalle!');
+      showBookingError(getT('errorOverlap'));
       return;
     }
 
@@ -452,7 +459,7 @@
       // Tarkistetaan tuplavaraus
       const existing = mockBookings.find(b => b.asunto_numero.toUpperCase() === apt && new Date(b.lopetusaika) > now);
       if (existing) {
-        showBookingError(`Asunnolla ${apt} on jo varaus! Vain 1 varaus kerrallaan sallittu.`);
+        showBookingError(getT('errorMaxBookings', {apt: apt}));
         return;
       }
 
@@ -467,7 +474,7 @@
       mockBookings.push(newBooking);
       localStorage.setItem('pesu_mock_bookings', JSON.stringify(mockBookings));
       
-      showToast(`Vuoro varattu huoneistolle ${apt}!`);
+      showToast(getT('toastBooked', {apt: apt}));
       elements.bookingModal.classList.add('hidden');
       fetchBookings();
       return;
@@ -488,7 +495,7 @@
 
       if (error) throw error;
 
-      showToast(`Vuoro varattu huoneistolle ${apt}!`);
+      showToast(getT('toastBooked', {apt: apt}));
       elements.bookingModal.classList.add('hidden');
       fetchBookings();
     } catch (err) {
@@ -501,7 +508,7 @@
     if (state.isOfflineMock) {
       mockBookings = mockBookings.filter(b => b.id !== bookingId);
       localStorage.setItem('pesu_mock_bookings', JSON.stringify(mockBookings));
-      showToast('Varaus peruutettu. Aika on nyt vapaa muiden varattavaksi.');
+      showToast(getT('toastCancelSuccess'));
       fetchBookings();
       return;
     }
@@ -514,16 +521,16 @@
 
       if (error) throw error;
 
-      showToast('Varaus peruutettu. Aika on nyt vapaa muiden varattavaksi.');
+      showToast(getT('toastCancelSuccess'));
       fetchBookings();
     } catch (err) {
       console.error('Peruutusvirhe:', err);
-      showToast('Peruminen epäonnistui: ' + err.message);
+      showToast(getT('toastCancelFail') + err.message);
     }
   }
 
   function showBookingError(msg) {
-    elements.bookingErrorBox.textContent = msg;
+    elements.bookingErrorBox.innerHTML = msg;
     elements.bookingErrorBox.classList.remove('hidden');
   }
 
@@ -533,6 +540,7 @@
   function setApt(apt) {
     state.currentApt = apt.trim().toUpperCase();
     localStorage.setItem('pesu_apt', state.currentApt);
+    updateLanguage();
     updateAptBadge();
     updateCalendarSlots();
   }
@@ -540,10 +548,10 @@
   function updateAptBadge() {
     if (state.currentApt) {
       elements.currentAptDisplay.textContent = state.currentApt;
-      elements.changeAptBtn.textContent = 'Vaihda';
+      elements.changeAptBtn.textContent = getT('setBtn');
     } else {
-      elements.currentAptDisplay.textContent = 'Ei asetettu';
-      elements.changeAptBtn.textContent = 'Aseta';
+      elements.currentAptDisplay.textContent = getT('notSet');
+      elements.changeAptBtn.textContent = getT('setBtn');
     }
   }
 
@@ -557,6 +565,33 @@
   // TAPAHTUMANKÄSITTELIJÄT
   // ============================================================================
   function bindEvents() {
+    
+    // Kielen vaihto
+    if (elements.langToggleBtn) {
+      elements.langToggleBtn.addEventListener('click', () => {
+        state.currentLang = state.currentLang === 'fi' ? 'en' : 'fi';
+        localStorage.setItem('pesu_lang', state.currentLang);
+        updateLanguage();
+      });
+    }
+    
+    // Ohjeet-modaali
+    if (elements.openRulesModalBtn) {
+      elements.openRulesModalBtn.addEventListener('click', () => {
+        elements.rulesModal.classList.remove('hidden');
+      });
+    }
+    if (elements.closeRulesModalX) {
+      elements.closeRulesModalX.addEventListener('click', () => {
+        elements.rulesModal.classList.add('hidden');
+      });
+    }
+    if (elements.closeRulesModalBtn) {
+      elements.closeRulesModalBtn.addEventListener('click', () => {
+        elements.rulesModal.classList.add('hidden');
+      });
+    }
+
     // Asunnon valinta
     elements.changeAptBtn.addEventListener('click', openAptModal);
     elements.closeAptModalBtn.addEventListener('click', () => elements.aptModal.classList.add('hidden'));
@@ -565,7 +600,7 @@
       if (val) {
         setApt(val);
         elements.aptModal.classList.add('hidden');
-        showToast(`Oma huoneisto asetettu: ${state.currentApt}`);
+        showToast(getT('toastAptSet') + state.currentApt);
       }
     });
 
@@ -608,7 +643,7 @@
     // Peruuta oma varaus yläpalkista
     elements.cancelMyBookingBtn.addEventListener('click', () => {
       if (state.myActiveBooking) {
-        if (confirm(`Haluatko varmasti peruuttaa huoneiston ${state.myActiveBooking.asunto_numero} pesuvuoron?`)) {
+        if (confirm(getT('toastCancelConfirm', {apt: state.myActiveBooking.asunto_numero}))) {
           cancelBooking(state.myActiveBooking.id);
         }
       }
@@ -632,7 +667,7 @@
 
   let toastTimer = null;
   function showToast(msg, duration = 3500) {
-    elements.toast.textContent = msg;
+    elements.toast.innerHTML = msg;
     elements.toast.classList.remove('hidden');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
