@@ -721,3 +721,40 @@ button {
 .app-footer a:hover {
   text-decoration: underline;
 }
+
+/* Aktiiviset varaukset lista */
+.active-bookings-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0 0;
+}
+.active-bookings-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-color);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+.btn-cancel-small {
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+}
+.btn-cancel-small:hover {
+  background: #c82333;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -29,7 +29,7 @@
     currentApt: localStorage.getItem('pesu_apt') || '',
     currentMonday: getMonday(new Date()),
     bookings: [], // Viikon varaukset
-    myActiveBooking: null,
+    myActiveBookings: [], // Käyttäjän kaikki voimassaolevat varaukset valitulle viikolle
     isOfflineMock: !isSupabaseConfigured // Toimii myös demotilassa paikallisesti ennen kuin käyttäjä syöttää Supabase-avaimet!
   };
 
@@ -126,7 +126,7 @@
       errorEndLate: "Pesutupa sulkeutuu klo {end}:00. Vuoro ei voi päättyä tämän jälkeen!",
       errorPast: "Et voi varata menneisyyteen sijoittuvaa aikaa.",
       errorOverlap: "Osa valitsemastasi ajasta on jo varattu toiselle asukkaalle!",
-      errorMaxBookings: "Asunnolla {apt} on jo varaus! Vain 1 varaus kerrallaan sallittu.",
+      errorMaxBookings: "Asunnolla {apt} on jo 3 varausta tällä viikolla! Enempää ei voi varata.",
       toastBooked: "Vuoro varattu huoneistolle {apt}!",
       toastCancelConfirm: "Haluatko varmasti peruuttaa huoneiston {apt} pesuvuoron?",
       toastCancelSuccess: "Varaus peruutettu. Aika on nyt vapaa muiden varattavaksi.",
@@ -139,6 +139,10 @@
       hourShort: "h",
       errorBookingFail: "Varauksen tallennus epäonnistui",
       devCredit: "Tekninen toteutus ja tuki:",
+      loadingWait: "Hetkinen...",
+      loadingCanceling: "Peruutetaan...",
+      alertMaxBookingsWeek: "Olet jo varannut sallitut 3 vuoroa tälle viikolle. Peruuta jokin aiemmista varauksista, jos haluat muuttaa aikoja.",
+      activeBookingsTitle: "Sinulla on varauksia ({count} / 3):",
       rulesHtml: `
         <div class="rule-section">
           <h4>Pesutuvan säännöt</h4>
@@ -224,7 +228,7 @@
       errorEndLate: "Laundry room closes at {end}:00. Reservation cannot end after this!",
       errorPast: "You cannot reserve time in the past.",
       errorOverlap: "Part of your selected time is already reserved!",
-      errorMaxBookings: "Apartment {apt} already has a reservation! Only 1 at a time.",
+      errorMaxBookings: "Apartment {apt} already has 3 reservations this week! Limit reached.",
       toastBooked: "Reservation confirmed for apartment {apt}!",
       toastCancelConfirm: "Are you sure you want to cancel reservation for {apt}?",
       toastCancelSuccess: "Reservation cancelled. The time slot is now free.",
@@ -237,6 +241,10 @@
       hourShort: "h",
       errorBookingFail: "Failed to save reservation",
       devCredit: "Technical implementation and support:",
+      loadingWait: "Please wait...",
+      loadingCanceling: "Canceling...",
+      alertMaxBookingsWeek: "You have already booked the maximum 3 slots for this week. Cancel an existing reservation to make changes.",
+      activeBookingsTitle: "You have active reservations ({count} / 3):",
       rulesHtml: `
         <div class="rule-section">
           <h4>Laundry room rules</h4>
@@ -469,19 +477,19 @@
       }
     });
 
-    let activeUserBooking = null;
+    state.myActiveBookings = state.bookings.filter(b => {
+      const endDate = new Date(b.lopetusaika);
+      return state.currentApt &&
+        b.asunto_numero.toUpperCase() === state.currentApt.toUpperCase() &&
+        endDate > now &&
+        getWeekNumber(endDate) === getWeekNumber(state.currentMonday) &&
+        endDate.getFullYear() === state.currentMonday.getFullYear();
+    });
 
     // Asetetaan varaukset
     state.bookings.forEach(b => {
       const start = new Date(b.aloitusaika);
       const end = new Date(b.lopetusaika);
-
-      // Tarkistetaan onko käyttäjän oma varaus ja tulevaisuudessa
-      if (state.currentApt && b.asunto_numero.toUpperCase() === state.currentApt.toUpperCase()) {
-        if (end > now) {
-          activeUserBooking = b;
-        }
-      }
 
       // Etsitään ruudukosta solut, jotka osuvat varauksen sisään
       cells.forEach(cell => {
@@ -500,7 +508,6 @@
       });
     });
 
-    state.myActiveBooking = activeUserBooking;
     renderMyBookingAlert();
   }
 
@@ -508,17 +515,48 @@
   // OMA VARAUS BANNERI
   // ============================================================================
   function renderMyBookingAlert() {
-    if (state.myActiveBooking) {
-      const b = state.myActiveBooking;
-      const start = new Date(b.aloitusaika);
-      const end = new Date(b.lopetusaika);
-      const dateStr = `${getT('dayNames')[(start.getDay() + 6) % 7]} ${start.getDate()}.${start.getMonth() + 1}.${start.getFullYear()}`;
-      elements.myBookingDetailsText.textContent = `${dateStr} ${getT('timePrefix')} ${formatTime(start)} – ${formatTime(end)} (${getT('aptLabel')}: ${b.asunto_numero})`;
+    if (state.myActiveBookings && state.myActiveBookings.length > 0) {
       elements.myBookingAlert.classList.remove('hidden');
+      
+      // Etsitään otsikko, johon pistetään määrä
+      const titleEl = elements.myBookingAlert.querySelector('h4');
+      if (titleEl) {
+        titleEl.textContent = getT('activeBookingsTitle', { count: state.myActiveBookings.length });
+      }
+
+      let html = '<ul class="active-bookings-list">';
+      state.myActiveBookings.forEach(b => {
+        const start = new Date(b.aloitusaika);
+        const end = new Date(b.lopetusaika);
+        const dateStr = `${getT('dayNames')[(start.getDay() + 6) % 7]} ${start.getDate()}.${start.getMonth() + 1}.${start.getFullYear()}`;
+        const timeStr = `${getT('timePrefix')} ${formatTime(start)} – ${formatTime(end)}`;
+        
+        html += `
+          <li>
+            <span>${dateStr} ${timeStr}</span>
+            <button class="btn-cancel-small" onclick="window.pesuCancelBooking('${b.id}', '${b.asunto_numero}')">✕</button>
+          </li>
+        `;
+      });
+      html += '</ul>';
+      
+      elements.myBookingDetailsText.innerHTML = html;
+      
+      // Piilotetaan alkuperäinen yksittäinen peruutusnappi, jos se on yhä olemassa
+      if (elements.cancelMyBookingBtn) {
+        elements.cancelMyBookingBtn.style.display = 'none';
+      }
     } else {
       elements.myBookingAlert.classList.add('hidden');
     }
   }
+
+  // Globaali funktio html-injektoidulle napille
+  window.pesuCancelBooking = function(bookingId, apt) {
+    if (confirm(getT('toastCancelConfirm', { apt: apt }))) {
+      cancelBooking(bookingId);
+    }
+  };
 
   // ============================================================================
   // VARAUSTEN HAKU & REALTIME
@@ -610,9 +648,9 @@
       return;
     }
 
-    // Tarkistetaan onko jo tuleva varaus
-    if (state.myActiveBooking) {
-      alert(getT('alertAlreadyBookedMy', { time: elements.myBookingDetailsText.textContent }));
+    // Tarkistetaan onko jo 3 tulevaa varausta tälle viikolle
+    if (state.myActiveBookings && state.myActiveBookings.length >= 3) {
+      alert(getT('alertMaxBookingsWeek'));
       return;
     }
 
@@ -693,12 +731,24 @@
     }
 
     // TALLENNUS SUPABASEEN / MOCKIIN
+    const submitBtn = elements.bookingForm.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn ? submitBtn.textContent : '';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = getT('loadingWait');
+    }
+
     if (state.isOfflineMock) {
       // Mock-tallennus
-      // Tarkistetaan tuplavaraus
-      const existing = mockBookings.find(b => b.asunto_numero.toUpperCase() === apt && new Date(b.lopetusaika) > now);
-      if (existing) {
+      // Tarkistetaan onko jo 3 varausta
+      const userBookings = mockBookings.filter(b => b.asunto_numero.toUpperCase() === apt && new Date(b.lopetusaika) > now);
+      if (userBookings.length >= 3) {
         showBookingError(getT('errorMaxBookings', { apt: apt }));
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalBtnText;
+        }
         return;
       }
 
@@ -715,6 +765,10 @@
 
       showToast(getT('toastBooked', { apt: apt }));
       elements.bookingModal.classList.add('hidden');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
       fetchBookings();
       return;
     }
@@ -740,15 +794,24 @@
     } catch (err) {
       console.error('Varausvirhe:', err);
       showBookingError(err.message || getT('errorBookingFail'));
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
     }
   }
 
   async function cancelBooking(bookingId) {
+    showToast(getT('loadingCanceling'));
+
     if (state.isOfflineMock) {
       mockBookings = mockBookings.filter(b => b.id !== bookingId);
       localStorage.setItem('pesu_mock_bookings', JSON.stringify(mockBookings));
-      showToast(getT('toastCancelSuccess'));
-      fetchBookings();
+      setTimeout(() => {
+        showToast(getT('toastCancelSuccess'));
+        fetchBookings();
+      }, 500);
       return;
     }
 
