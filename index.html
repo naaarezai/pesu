@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="pageTitle">Kouvolan Asunnot Oy – Pesutuvan varauslista | pesu.sido.fi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Yläpalkki / Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-logo">
+          <!-- Kouvolan Asunnot -henkinen ruutukuvioikoni -->
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="7" height="7" rx="1.5" fill="#3B82F6"/>
+            <rect x="13" y="2" width="7" height="7" rx="1.5" fill="#10B981"/>
+            <rect x="24" y="2" width="7" height="7" rx="1.5" fill="#F59E0B"/>
+            <rect x="2" y="13" width="7" height="7" rx="1.5" fill="#6366F1"/>
+            <rect x="13" y="13" width="7" height="7" rx="1.5" fill="#EC4899"/>
+            <rect x="24" y="13" width="7" height="7" rx="1.5" fill="#3B82F6"/>
+            <rect x="2" y="24" width="7" height="7" rx="1.5" fill="#10B981"/>
+            <rect x="13" y="24" width="7" height="7" rx="1.5" fill="#F59E0B"/>
+            <rect x="24" y="24" width="7" height="7" rx="1.5" fill="#6366F1"/>
+          </svg>
+        </div>
+        <div class="brand-texts">
+          <h1 class="brand-title">Kouvolan Asunnot Oy</h1>
+          <p class="brand-subtitle">PESUTUVAN VARAUSLISTA / LAUNDRY RESERVATION</p>
+        </div>
+      </div>
+
+      <!-- Asunnon valinta / Identiteetti & Kieli -->
+      <div class="header-actions">
+        <button type="button" class="lang-toggle-btn" id="langToggleBtn" title="Vaihda kieltä / Change language">EN</button>
+        <div class="user-badge" id="userBadge">
+          <span class="user-label" data-i18n="ownAptLabel">Oma huoneisto:</span>
+          <strong class="user-apt" id="currentAptDisplay" data-i18n="notSet">Ei asetettu</strong>
+          <button type="button" class="btn-sm btn-outline" id="changeAptBtn" data-i18n="setBtn">Aseta</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Pääsisältö -->
+  <main class="main-content">
+    <!-- Info- ja sääntöpalkki -->
+    <section class="rules-banner">
+      <div class="rule-chip">
+        <span class="chip-icon">🕒</span>
+        <span><span data-i18n="openingHours">Aukioloaika</span> <strong>07:00 – 21:00</strong></span>
+      </div>
+      <div class="rule-chip">
+        <span class="chip-icon">⏱️</span>
+        <span><span data-i18n="maxDuration">Varauksen kesto max</span> <strong>3 <span data-i18n="hours">tuntia</span></strong></span>
+      </div>
+      <div class="rule-chip">
+        <span class="chip-icon">🔒</span>
+        <span><span data-i18n="oneSlotOnly">Vain 1 vuoro kerrallaan</span></span>
+      </div>
+      <div class="rule-chip">
+        <span class="chip-icon">🧹</span>
+        <span data-i18n="cleanAfter">Muistathan siivota pesutuvan vuorosi jälkeen!</span>
+      </div>
+    </section>
+
+    <!-- Viikkonavigaatio & toiminnot -->
+    <section class="controls-bar">
+      <div class="week-nav">
+        <button class="nav-btn" id="prevWeekBtn" title="Edellinen viikko">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <div class="week-info">
+          <span class="week-title" id="weekTitle">Viikko --</span>
+          <span class="week-daterange" id="weekDateRange">--.-- - --.--.----</span>
+        </div>
+        <button class="nav-btn" id="nextWeekBtn" title="Seuraava viikko">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+        <button class="btn-sm btn-ghost" id="todayBtn" data-i18n="thisWeek">Tämä viikko</button>
+      </div>
+
+      <div class="action-buttons" style="display: flex; gap: 0.5rem;">
+        <button class="btn-secondary" id="openRulesModalBtn">
+          <span class="btn-icon">ℹ️</span> <span data-i18n="rulesBtn">Ohjeet & Säännöt</span>
+        </button>
+        <button class="btn-primary" id="openBookingModalBtn">
+          <span class="btn-icon">+</span> <span data-i18n="reserveBtn">Varaa pesuvuoro</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Oma aktiivinen varaus banneri (jos on) -->
+    <div id="myBookingAlert" class="my-booking-card hidden">
+      <div class="my-booking-content">
+        <div class="my-booking-icon">🧺</div>
+        <div class="my-booking-details">
+          <h4 data-i18n="activeBookingTitle">Sinulla on voimassaoleva pesuvuoro:</h4>
+          <p id="myBookingDetailsText">Ladataan...</p>
+        </div>
+      </div>
+      <div class="my-booking-actions">
+        <button class="btn-danger" id="cancelMyBookingBtn" data-i18n="cancelBookingBtn">Peruuta varaus</button>
+      </div>
+    </div>
+
+    <!-- Kalenteritaulukko (lukujärjestys kuten paperilistassa) -->
+    <div class="calendar-wrapper">
+      <div class="calendar-scroll">
+        <table class="booking-table" id="bookingTable">
+          <thead>
+            <tr id="tableHeaderRow">
+              <th class="time-col-header">klo</th>
+              <!-- Päivät generoidaan dynaamisesti JS:llä -->
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Tuntirivit 07-08 -> 21-22 generoidaan JS:llä -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="paper-footer-note">
+      <p><strong data-i18n="footerNote1">Merkitsithän huoneistosi numeron oikein.</strong> <span data-i18n="footerNote2">Noudata pesutuvan järjestyssääntöjä ja vapauta koneet ajoissa seuraavalle asukkaalle!</span></p>
+    </div>
+  </main>
+
+  <!-- MODAALI: Asuntonumeron asetus -->
+  <div class="modal-backdrop hidden" id="aptModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 data-i18n="aptModalTitle">Määritä oma huoneistonumero</h3>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc" data-i18n="aptModalDesc">
+          Syötä huoneistonumerosi (esim. <strong>D23/1</strong>, <strong>A4/1</strong>, <strong>B12/2</strong>).
+          Salasanaa ei tarvita! Asuntonumero säilyy tämän laitteen muistissa.
+        </p>
+        <div class="form-group">
+          <label for="aptInput" data-i18n="aptModalLabel">Huoneiston numero / Apartment number:</label>
+          <input type="text" id="aptInput" placeholder="Esim. D23/1" autocomplete="off" autofocus>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="closeAptModalBtn" data-i18n="closeBtn">Sulje</button>
+        <button type="button" class="btn-primary" id="saveAptBtn" data-i18n="saveBtn">Tallenna</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAALI: Varaa pesuvuoro -->
+  <div class="modal-backdrop hidden" id="bookingModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 data-i18n="bookingModalTitle">Varaa pesuvuoro / Reserve laundry</h3>
+        <button class="modal-close-btn" id="closeBookingModalX">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="bookingForm">
+          <div class="form-group">
+            <label for="modalApt" data-i18n="aptModalLabel">Huoneisto:</label>
+            <input type="text" id="modalApt" required placeholder="esim. D23/1">
+          </div>
+
+          <div class="form-group">
+            <label for="bookingDate" data-i18n="dateLabel">Päivämäärä / Date:</label>
+            <input type="date" id="bookingDate" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="bookingStart" data-i18n="startTimeLabel">Aloitusaika:</label>
+              <select id="bookingStart" required>
+                <!-- 07:00 - 21:00 -->
+              </select>
+            </div>
+            <div class="form-group col-6">
+              <label for="bookingDuration" data-i18n="durationLabel">Kesto (tuntia):</label>
+              <select id="bookingDuration" required>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="booking-summary-box">
+            <span class="summary-label" data-i18n="bookingSummaryLabel">Varattava aikaväli:</span>
+            <strong id="bookingSummaryRange">07:00 - 10:00</strong>
+          </div>
+
+          <div class="error-box hidden" id="bookingErrorBox"></div>
+
+          <div class="modal-footer modal-footer-inside">
+            <button type="button" class="btn-secondary" id="closeBookingModalBtn" data-i18n="cancelBtn">Peruuta</button>
+            <button type="submit" class="btn-primary" id="confirmBookingBtn" data-i18n="confirmBtn">Vahvista varaus</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAALI: Ohjeet & Säännöt -->
+  <div class="modal-backdrop hidden" id="rulesModal">
+    <div class="modal-card rules-card">
+      <div class="modal-header">
+        <h3 data-i18n="rulesModalTitle">Ohjeet & Säännöt / Rules & Guides</h3>
+        <button class="modal-close-btn" id="closeRulesModalX">&times;</button>
+      </div>
+      <div class="modal-body modal-body-scroll">
+        <div id="rulesContent" class="rules-content">
+          <!-- Sisältö injektoidaan JS:llä kielen mukaan -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-primary" id="closeRulesModalBtn" data-i18n="closeBtn">Sulje</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ilmoituslaatikko (Toast) -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Skriptit -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
