@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
+  <!-- Driver.js CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
   <link rel="stylesheet" href="style.css">
   <!-- Supabase JS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -95,9 +97,12 @@
         <button class="btn-sm btn-ghost" id="todayBtn" data-i18n="thisWeek">Tämä viikko</button>
       </div>
 
-      <div class="action-buttons" style="display: flex; gap: 0.5rem;">
+      <div class="action-buttons" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button class="btn-secondary" id="openGuideModalBtn">
+          <span class="btn-icon">💡</span> <span data-i18n="guideBtn">Käyttöopas</span>
+        </button>
         <button class="btn-secondary" id="openRulesModalBtn">
-          <span class="btn-icon">ℹ️</span> <span data-i18n="rulesBtn">Ohjeet & Säännöt</span>
+          <span class="btn-icon">📜</span> <span data-i18n="rulesBtn">Ohjeet & Säännöt</span>
         </button>
         <button class="btn-primary" id="openBookingModalBtn">
           <span class="btn-icon">+</span> <span data-i18n="reserveBtn">Varaa pesuvuoro</span>
@@ -247,6 +252,7 @@
   <div id="toast" class="toast hidden"></div>
 
   <!-- Skriptit -->
+  <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>

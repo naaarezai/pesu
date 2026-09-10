@@ -23,9 +23,20 @@
     }
   }
 
+  // Hae selaimen kieli, jos ei aiemmin valittu
+  function getDefaultLanguage() {
+    const saved = localStorage.getItem('pesu_lang');
+    if (saved) return saved;
+    const browserLang = navigator.language || navigator.userLanguage || '';
+    if (browserLang.toLowerCase().startsWith('fi')) {
+      return 'fi';
+    }
+    return 'en';
+  }
+
   // Tilan hallinta (State)
   const state = {
-    currentLang: localStorage.getItem('pesu_lang') || 'fi',
+    currentLang: getDefaultLanguage(),
     currentApt: localStorage.getItem('pesu_apt') || '',
     currentMonday: getMonday(new Date()),
     bookings: [], // Viikon varaukset
@@ -143,6 +154,18 @@
       loadingCanceling: "Peruutetaan...",
       alertMaxBookingsWeek: "Olet jo varannut sallitut 3 tuntia tälle viikolle.",
       activeBookingsTitle: "Sinulla on varauksia ({count}):",
+      guideBtn: "Käyttöopas",
+      tourStep0Title: "Valitse kieli",
+      tourStep0Desc: "Aloita valitsemalla ohjelman kieli tästä painikkeesta.",
+      tourStep1Title: "1. Aseta asuntosi numero",
+      tourStep1Desc: "Klikkaa tästä ja syötä asuntosi numero (esim. C15/1). Laite muistaa numerosi automaattisesti.",
+      tourStep2Title: "2. Varaa pesuvuoro",
+      tourStep2Desc: "Klikkaa kalenterista vapaata vihreää ruutua haluamasi ajan kohdalta. Voit varata pesutuvan enintään 3 tunniksi kerrallaan samalla viikolla.",
+      tourStep3Title: "3. Omat varaukset & peruutukset",
+      tourStep3Desc: "Näet omat varauksesi tässä yläpalkissa. Voit myös peruuttaa varauksesi suoraan tästä tai klikkaamalla sitä kalenterissa.",
+      tourDoneBtn: "Valmis",
+      tourNextBtn: "Seuraava",
+      tourPrevBtn: "Edellinen",
       rulesHtml: `
         <div class="rule-section">
           <h4>Pesutuvan säännöt</h4>
@@ -245,6 +268,18 @@
       loadingCanceling: "Canceling...",
       alertMaxBookingsWeek: "You have already booked the maximum 3 hours for this week.",
       activeBookingsTitle: "You have active reservations ({count}):",
+      guideBtn: "User Guide",
+      tourStep0Title: "Select language",
+      tourStep0Desc: "Start by selecting your preferred language from this button.",
+      tourStep1Title: "1. Set your apartment number",
+      tourStep1Desc: "Click here and enter your apartment number (e.g. C15/1). The device will remember your number automatically.",
+      tourStep2Title: "2. Book a laundry slot",
+      tourStep2Desc: "Click any free green slot on the calendar. You can book the laundry room for up to 3 hours per week.",
+      tourStep3Title: "3. Your reservations & cancellations",
+      tourStep3Desc: "You can see your reservations in this top bar. You can also cancel your reservation directly from here or by clicking it on the calendar.",
+      tourDoneBtn: "Done",
+      tourNextBtn: "Next",
+      tourPrevBtn: "Previous",
       rulesHtml: `
         <div class="rule-section">
           <h4>Laundry room rules</h4>
@@ -298,27 +333,27 @@
   function updateLanguage() {
     const t = translations[state.currentLang];
     document.documentElement.lang = state.currentLang;
-    
+
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
       if (t[key]) {
         if (el.tagName === 'INPUT' && el.type === 'text') {
-            // Keep placeholder or not? We can just keep it.
+          // Keep placeholder or not? We can just keep it.
         } else {
-            el.innerHTML = t[key];
+          el.innerHTML = t[key];
         }
       }
     });
-    
+
     const rulesContent = document.getElementById('rulesContent');
     if (rulesContent) {
-        rulesContent.innerHTML = t.rulesHtml;
+      rulesContent.innerHTML = t.rulesHtml;
     }
-    
+
     if (elements.langToggleBtn) {
-        elements.langToggleBtn.textContent = state.currentLang === 'fi' ? 'EN' : 'FI';
+      elements.langToggleBtn.textContent = state.currentLang === 'fi' ? 'EN' : 'FI';
     }
-    
+
     renderCalendarSkeleton();
     updateCalendarSlots();
     updateAptBadge();
@@ -334,12 +369,74 @@
     renderCalendarSkeleton();
     fetchBookings();
     bindEvents();
+    checkFirstVisit();
 
     if (state.isOfflineMock) {
       showToast(getT('toastDemo'), 6000);
     } else {
       setupRealtime();
     }
+  }
+
+  function checkFirstVisit() {
+    if (!localStorage.getItem('pesu_guide_seen')) {
+      startLiveTour();
+    }
+  }
+
+  function startLiveTour() {
+    // Varmistetaan että driver.js on ladattu
+    if (!window.driver) return;
+
+    const driver = window.driver.js.driver;
+    const driverObj = driver({
+      showProgress: true,
+      nextBtnText: getT('tourNextBtn'),
+      prevBtnText: getT('tourPrevBtn'),
+      doneBtnText: getT('tourDoneBtn'),
+      steps: [
+        {
+          element: '#langToggleBtn',
+          popover: {
+            title: getT('tourStep0Title'),
+            description: getT('tourStep0Desc'),
+            side: "bottom",
+            align: 'end'
+          }
+        },
+        {
+          element: '#changeAptBtn',
+          popover: {
+            title: getT('tourStep1Title'),
+            description: getT('tourStep1Desc'),
+            side: "left",
+            align: 'start'
+          }
+        },
+        {
+          element: '.table-container',
+          popover: {
+            title: getT('tourStep2Title'),
+            description: getT('tourStep2Desc'),
+            side: "top",
+            align: 'center'
+          }
+        },
+        {
+          element: '#myBookingAlert',
+          popover: {
+            title: getT('tourStep3Title'),
+            description: getT('tourStep3Desc'),
+            side: "bottom",
+            align: 'start'
+          }
+        }
+      ],
+      onDestroyed: () => {
+        localStorage.setItem('pesu_guide_seen', 'true');
+      }
+    });
+    driverObj.drive();
   }
 
   // Aseta aloitustunnit valikkoon (07:00 - 21:00)
@@ -517,7 +614,7 @@
   function renderMyBookingAlert() {
     if (state.myActiveBookings && state.myActiveBookings.length > 0) {
       elements.myBookingAlert.classList.remove('hidden');
-      
+
       // Etsitään otsikko, johon pistetään määrä
       const titleEl = elements.myBookingAlert.querySelector('h4');
       if (titleEl) {
@@ -530,7 +627,7 @@
         const end = new Date(b.lopetusaika);
         const dateStr = `${getT('dayNames')[(start.getDay() + 6) % 7]} ${start.getDate()}.${start.getMonth() + 1}.${start.getFullYear()}`;
         const timeStr = `${getT('timePrefix')} ${formatTime(start)} – ${formatTime(end)}`;
-        
+
         html += `
           <li>
             <span>${dateStr} ${timeStr}</span>
@@ -539,9 +636,9 @@
         `;
       });
       html += '</ul>';
-      
+
       elements.myBookingDetailsText.innerHTML = html;
-      
+
       // Piilotetaan alkuperäinen yksittäinen peruutusnappi, jos se on yhä olemassa
       if (elements.cancelMyBookingBtn) {
         elements.cancelMyBookingBtn.style.display = 'none';
@@ -552,7 +649,7 @@
   }
 
   // Globaali funktio html-injektoidulle napille
-  window.pesuCancelBooking = function(bookingId, apt) {
+  window.pesuCancelBooking = function (bookingId, apt) {
     if (confirm(getT('toastCancelConfirm', { apt: apt }))) {
       cancelBooking(bookingId);
     }
@@ -673,7 +770,7 @@
     elements.bookingDate.value = `${yyyy}-${mm}-${dd}`;
 
     elements.bookingStart.value = (hour !== undefined) ? hour : 7;
-    
+
     // Päivitetään kesto-valikon vaihtoehdot (max jäljellä olevat tunnit)
     const durationSelect = elements.bookingDuration;
     durationSelect.innerHTML = '';
@@ -771,7 +868,7 @@
         const e = new Date(b.lopetusaika);
         return sum + ((e - s) / (1000 * 60 * 60));
       }, 0);
-      
+
       if (totalHoursMock + duration > 3) {
         showBookingError(getT('alertMaxBookingsWeek'));
         if (submitBtn) {
@@ -896,6 +993,10 @@
   // TAPAHTUMANKÄSITTELIJÄT
   // ============================================================================
   function bindEvents() {
+
+    // Guide Modal
+    const openGuideModalBtn = document.getElementById('openGuideModalBtn');
+    if (openGuideModalBtn) openGuideModalBtn.addEventListener('click', startLiveTour);
 
     // Kielen vaihto
     if (elements.langToggleBtn) {
