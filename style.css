@@ -924,6 +924,12 @@ body[data-theme="dark"] .dev-text {
   color: var(--gray-400);
 }
 
+body[data-theme="dark"] .toast {
+  background-color: var(--gray-100);
+  color: var(--gray-800);
+  border: 1px solid var(--gray-200);
+}
+
 [data-theme="dark"] .table-container {
   box-shadow: none;
   border: 1px solid var(--gray-200);
