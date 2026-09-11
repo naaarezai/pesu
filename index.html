@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="pageTitle">Kouvolan Asunnot Oy – Pesutuvan varauslista | pesu.sido.fi</title>
+  
+  <!-- PWA Manifest & Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" href="icon-192x192.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
@@ -43,8 +48,9 @@
         </div>
       </div>
 
-      <!-- Asunnon valinta / Identiteetti & Kieli -->
-      <div class="header-actions">
+      <!-- Asunnon valinta / Identiteetti & Kieli & Teema -->
+      <div class="header-actions" style="display:flex; align-items:center; gap: 8px;">
+        <button type="button" class="lang-toggle-btn" id="themeToggleBtn" title="Vaihda teema / Toggle theme" style="cursor:pointer; font-size: 1.2rem; background:none; border:none;">🌙</button>
         <button type="button" class="lang-toggle-btn" id="langToggleBtn"
           title="Vaihda kieltä / Change language">EN</button>
         <div class="user-badge" id="userBadge">
@@ -150,8 +156,11 @@
 
   <!-- Globaali alatunniste (kehittäjän mainos/tuki) -->
   <footer class="app-footer">
-    <p><span data-i18n="devCredit">Tekninen toteutus ja tuki:</span> <a href="https://naaarezai.github.io"
-        target="_blank" rel="noopener" style="color: blue;">Nasu</a></p>
+    <a href="https://naaarezai.github.io" target="_blank" rel="noopener" class="dev-badge">
+      <span class="dev-icon">👨‍💻</span>
+      <span class="dev-text" data-i18n="devCredit">Tekninen toteutus ja tuki:</span>
+      <strong class="dev-name">Nasu</strong>
+    </a>
   </footer>
 
   <!-- MODAALI: Asuntonumeron asetus -->
@@ -255,6 +264,17 @@
   <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
+  
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(registration => console.log('SW registered'))
+          .catch(err => console.log('SW registration failed', err));
+      });
+    }
+  </script>
 </body>
 
 </html>

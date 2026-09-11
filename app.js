@@ -81,7 +81,8 @@
     openRulesModalBtn: document.getElementById('openRulesModalBtn'),
     rulesModal: document.getElementById('rulesModal'),
     closeRulesModalX: document.getElementById('closeRulesModalX'),
-    closeRulesModalBtn: document.getElementById('closeRulesModalBtn')
+    closeRulesModalBtn: document.getElementById('closeRulesModalBtn'),
+    themeToggleBtn: document.getElementById('themeToggleBtn')
   };
 
   // Päivien nimet (Maanantai - Sunnuntai)
@@ -107,6 +108,8 @@
       reserveBtn: "Varaa pesuvuoro",
       activeBookingTitle: "Sinulla on voimassaoleva pesuvuoro:",
       cancelBookingBtn: "Peruuta varaus",
+      addToCalendarBtn: "Lisää kalenteriin",
+      confirmAddCalendar: "Haluatko lisätä pesuvuoron heti kalenteriisi? (Tämä asettaa myös 15min muistutuksen)",
       footerNote1: "Merkitsithän huoneistosi numeron oikein.",
       footerNote2: "Noudata pesutuvan järjestyssääntöjä ja vapauta koneet ajoissa seuraavalle asukkaalle!",
       aptModalTitle: "Määritä oma huoneistonumero",
@@ -221,6 +224,8 @@
       reserveBtn: "Reserve laundry",
       activeBookingTitle: "You have an active reservation:",
       cancelBookingBtn: "Cancel reservation",
+      addToCalendarBtn: "Add to Calendar",
+      confirmAddCalendar: "Do you want to add the laundry reservation to your calendar now? (This will also set a 15 min reminder)",
       footerNote1: "Please ensure your apartment number is correct.",
       footerNote2: "Follow the laundry room rules and free the machines on time for the next resident!",
       aptModalTitle: "Set your apartment number",
@@ -363,6 +368,7 @@
   // ALUSTUS
   // ============================================================================
   function init() {
+    initTheme();
     updateLanguage();
     updateAptBadge();
     populateTimeSelects();
@@ -450,6 +456,30 @@
       elements.bookingStart.appendChild(opt);
     }
     updateBookingSummary();
+  }
+
+  // ============================================================================
+  // TEEMA (TUMMA/VAALEA)
+  // ============================================================================
+  function initTheme() {
+    const savedTheme = localStorage.getItem('pesu_theme');
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(prefersDark ? 'dark' : 'light');
+    }
+  }
+
+  function setTheme(theme) {
+    if (theme === 'dark') {
+      document.body.setAttribute('data-theme', 'dark');
+      if (elements.themeToggleBtn) elements.themeToggleBtn.textContent = '☀️';
+    } else {
+      document.body.removeAttribute('data-theme');
+      if (elements.themeToggleBtn) elements.themeToggleBtn.textContent = '🌙';
+    }
+    localStorage.setItem('pesu_theme', theme);
   }
 
   // ============================================================================
@@ -628,10 +658,22 @@
         const dateStr = `${getT('dayNames')[(start.getDay() + 6) % 7]} ${start.getDate()}.${start.getMonth() + 1}.${start.getFullYear()}`;
         const timeStr = `${getT('timePrefix')} ${formatTime(start)} – ${formatTime(end)}`;
 
+        const bJson = encodeURIComponent(JSON.stringify({
+          id: b.id,
+          asunto: b.asunto_numero,
+          aloitusaika: b.aloitusaika,
+          lopetusaika: b.lopetusaika
+        }));
+
         html += `
-          <li>
+          <li style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <span>${dateStr} ${timeStr}</span>
-            <button class="btn-cancel-small" onclick="window.pesuCancelBooking('${b.id}', '${b.asunto_numero}')">✕</button>
+            <div style="display:flex; gap: 8px;">
+              <button class="btn-primary" style="padding: 4px 8px; font-size: 0.85rem;" onclick="window.pesuDownloadICS('${bJson}')">
+                📅 ${getT('addToCalendarBtn')}
+              </button>
+              <button class="btn-cancel-small" onclick="window.pesuCancelBooking('${b.id}', '${b.asunto_numero}')">❌</button>
+            </div>
           </li>
         `;
       });
@@ -652,6 +694,50 @@
   window.pesuCancelBooking = function (bookingId, apt) {
     if (confirm(getT('toastCancelConfirm', { apt: apt }))) {
       cancelBooking(bookingId);
+    }
+  };
+
+  // ============================================================================
+  // KALENTERI (ICS) LATAUS
+  // ============================================================================
+  window.pesuDownloadICS = function(bookingJsonStr) {
+    try {
+      const booking = JSON.parse(decodeURIComponent(bookingJsonStr));
+      const start = new Date(booking.aloitusaika);
+      const end = new Date(booking.lopetusaika);
+      
+      const formatICSDate = (d) => {
+        return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      };
+
+      const icsContent = 
+`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Kouvolan Asunnot//Pesutuvan varaus//FI
+BEGIN:VEVENT
+UID:${booking.id}@pesu.sido.fi
+DTSTAMP:${formatICSDate(new Date())}
+DTSTART:${formatICSDate(start)}
+DTEND:${formatICSDate(end)}
+SUMMARY:Pesuvuoro
+DESCRIPTION:Pesuvuoro asunnolle ${booking.asunto}
+BEGIN:VALARM
+TRIGGER:-PT15M
+ACTION:DISPLAY
+DESCRIPTION:Pesuvuoro alkaa 15 min kuluttua
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute('download', `pesuvuoro_${booking.asunto.replace('/', '_')}.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error("Virhe ICS luonnissa", e);
     }
   };
 
@@ -896,6 +982,19 @@
         submitBtn.textContent = originalBtnText;
       }
       fetchBookings();
+
+      setTimeout(() => {
+        if (confirm(getT('confirmAddCalendar'))) {
+          const bJson = encodeURIComponent(JSON.stringify({
+            id: newBooking.id,
+            asunto: newBooking.asunto_numero,
+            aloitusaika: newBooking.aloitusaika,
+            lopetusaika: newBooking.lopetusaika
+          }));
+          window.pesuDownloadICS(bJson);
+        }
+      }, 300);
+
       return;
     }
 
@@ -917,6 +1016,20 @@
       showToast(getT('toastBooked', { apt: apt }));
       elements.bookingModal.classList.add('hidden');
       fetchBookings();
+
+      if (data && data[0]) {
+        setTimeout(() => {
+          if (confirm(getT('confirmAddCalendar'))) {
+            const bJson = encodeURIComponent(JSON.stringify({
+              id: data[0].id,
+              asunto: data[0].asunto_numero,
+              aloitusaika: data[0].aloitusaika,
+              lopetusaika: data[0].lopetusaika
+            }));
+            window.pesuDownloadICS(bJson);
+          }
+        }, 300);
+      }
     } catch (err) {
       console.error('Varausvirhe:', err);
       showBookingError(err.message || getT('errorBookingFail'));
@@ -993,6 +1106,13 @@
   // TAPAHTUMANKÄSITTELIJÄT
   // ============================================================================
   function bindEvents() {
+
+    if (elements.themeToggleBtn) {
+      elements.themeToggleBtn.addEventListener('click', () => {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        setTheme(isDark ? 'light' : 'dark');
+      });
+    }
 
     // Guide Modal
     const openGuideModalBtn = document.getElementById('openGuideModalBtn');
