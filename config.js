@@ -14,7 +14,7 @@ window.APP_CONFIG = {
     SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnaWtjZm14cW9wbXRzdWt5Zm55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NTcxNTksImV4cCI6MjEwNDUzMzE1OX0.igymR-HTJjPDmXtpHGKIBwxPNZ-3jxuDaU9RkJFIF0U",
 
     // Taloyhtiön perustiedot
-    HOUSE_NAME: "Kouvolan Asunnot Oy",
+    HOUSE_NAME: "Jukolantie 17",
     SITE_TITLE: "Pesutuvan varauslista / Laundry Reservation",
 
     // Varaussäännöt

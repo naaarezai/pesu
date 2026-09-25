@@ -1,5 +1,5 @@
 -- ==============================================================================
--- KOUVOLAN ASUNNOT OY - PESUTUVAN VARAUSJÄRJESTELMÄ (pesu.sido.fi)
+-- JUKOLANTIE 17 - PESUTUVAN VARAUSJÄRJESTELMÄ (pesu.sido.fi)
 -- SUPABASE SQL SETUP
 -- ==============================================================================
 

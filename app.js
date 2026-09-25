@@ -1,5 +1,5 @@
 // ==============================================================================
-// KOUVOLAN ASUNNOT OY - PESUTUVAN VARAUSJÄRJESTELMÄ (pesu.sido.fi)
+// JUKOLANTIE 17 - PESUTUVAN VARAUSJÄRJESTELMÄ (pesu.sido.fi)
 // Frontend-sovelluslogiikka & Supabase-integraatio
 // ==============================================================================
 
@@ -94,7 +94,7 @@
   // ============================================================================
   const translations = {
     fi: {
-      pageTitle: "Kouvolan Asunnot Oy – Pesutuvan varauslista | pesu.sido.fi",
+      pageTitle: "Jukolantie 17 – Pesutuvan varauslista | pesu.sido.fi",
       ownAptLabel: "Oma huoneisto:",
       notSet: "Ei asetettu",
       setBtn: "Aseta",
@@ -210,7 +210,7 @@
       `
     },
     en: {
-      pageTitle: "Kouvolan Asunnot Oy – Laundry Reservation | pesu.sido.fi",
+      pageTitle: "Jukolantie 17 – Laundry Reservation | pesu.sido.fi",
       ownAptLabel: "My apartment:",
       notSet: "Not set",
       setBtn: "Set",
@@ -713,7 +713,7 @@
       const icsContent = 
 `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Kouvolan Asunnot//Pesutuvan varaus//FI
+PRODID:-//Jukolantie 17//Pesutuvan varaus//FI
 BEGIN:VEVENT
 UID:${booking.id}@pesu.sido.fi
 DTSTAMP:${formatICSDate(new Date())}

@@ -1,7 +1,7 @@
 {
   "name": "Pesutupa Varaus",
   "short_name": "Pesutupa",
-  "description": "Kouvolan Asunnot Oy:n pesutuvan varausjärjestelmä",
+  "description": "Jukolantie 17 pesutuvan varausjärjestelmä",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f6f9",
